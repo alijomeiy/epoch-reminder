@@ -2,9 +2,9 @@ from django.db import models
 
 class Session(models.Model):
     class Status(models.TextChoices):
-        REGISTER = 'upcoming', 'Upcoming '
-        RUN = 'ongoing', 'Ongoing '
-        FINISH = 'completed', 'Completed'
+        UPCOMING = 'upcoming', 'Upcoming '
+        ONGOING = 'ongoing', 'Ongoing '
+        COMPLETED = 'completed', 'Completed'
     
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
