@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     
     # Internal app
     'session',
+    'user'
 ]
 
 MIDDLEWARE = [
