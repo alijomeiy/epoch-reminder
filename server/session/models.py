@@ -13,7 +13,7 @@ class Session(models.Model):
     status = models.CharField(
         max_length=10,
         choices=Status.choices,
-        default=Status.REGISTER,
+        default=Status.UPCOMING,
     )
 
     def __str__(self):
