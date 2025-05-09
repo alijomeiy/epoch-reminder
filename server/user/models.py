@@ -10,8 +10,6 @@ class MessengerUser(models.Model):
 
 
 class User(models.Model):
-    NUMBER_CHOICES = [(i, str(i)) for i in range(1, 121)]
-
     name = models.CharField(max_length=100)
     created_by = models.ForeignKey(MessengerUser, on_delete=models.CASCADE,
                                    related_name='created_users')
