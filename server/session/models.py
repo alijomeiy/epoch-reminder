@@ -1,11 +1,12 @@
 from django.db import models
 
+
 class Session(models.Model):
     class Status(models.TextChoices):
         UPCOMING = 'upcoming', 'Upcoming '
         ONGOING = 'ongoing', 'Ongoing '
         COMPLETED = 'completed', 'Completed'
-    
+
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     start_register_time = models.DateTimeField()
