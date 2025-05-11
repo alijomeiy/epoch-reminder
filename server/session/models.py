@@ -6,6 +6,7 @@ class Session(models.Model):
         UPCOMING = 'upcoming', 'Upcoming '
         ONGOING = 'ongoing', 'Ongoing '
         COMPLETED = 'completed', 'Completed'
+        WAITING = 'waiting', 'Waiting'
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
