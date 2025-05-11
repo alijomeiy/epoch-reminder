@@ -18,6 +18,8 @@ def schedule_session_tasks(sender, instance, created, **kwargs):
         schedule_task(instance.end_register_time, on_end_register_time, instance.id, 'end_register')
 
 def schedule_task(run_at, task_func, session_id, tag):
+    if run_at.tzinfo is not None:
+        run_at = run_at.replace(tzinfo=None)
     clocked_time = make_aware(run_at)
     clocked, _ = ClockedSchedule.objects.get_or_create(clocked_time=clocked_time)
 
