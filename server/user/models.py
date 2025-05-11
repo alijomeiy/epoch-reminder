@@ -13,7 +13,7 @@ class User(models.Model):
     name = models.CharField(max_length=100)
     created_by = models.ForeignKey(MessengerUser, on_delete=models.CASCADE,
                                    related_name='created_users')
-    default_hezb = models.IntegerField(null=True, blank=True, default=None,
+    default_hezb = models.IntegerField(null=True, blank=True,
                                        validators=[MinValueValidator(1),
                                                    MaxValueValidator(120)])
 

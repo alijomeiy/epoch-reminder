@@ -8,7 +8,7 @@ from user.models import User
 class SessionParticipant(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     session = models.ForeignKey(Session, on_delete=models.CASCADE)
-    hezb = models.IntegerField(null=True, blank=True, default=None,
+    hezb = models.IntegerField(null=True, blank=True,
                                        validators=[MinValueValidator(1),
                                                    MaxValueValidator(120)])
     joined_at = models.DateTimeField(auto_now_add=True)
