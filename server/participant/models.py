@@ -14,4 +14,4 @@ class SessionParticipant(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.user.username} in {self.session}"
+        return f"{self.user.name} in {self.session}"
