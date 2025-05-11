@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  web:
+    build: ./server
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./server:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  celery:
+    build: ./server
+    command: celery -A server worker --loglevel=info
+    volumes:
+      - ./server:/code
+    depends_on:
+      - web
+      - redis
+
+  celery-beat:
+    build: ./server
+    command: celery -A server beat --loglevel=info
+    volumes:
+      - ./server:/code
+    depends_on:
+      - web
+      - redis
+
