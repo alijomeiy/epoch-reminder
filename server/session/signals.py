@@ -8,6 +8,9 @@ from .tasks import (
     on_start_time, on_end_time,
     on_start_register_time, on_end_register_time
 )
+from pytz import timezone, UTC
+
+Tehran_TZ = timezone('Asia/Tehran')
 
 @receiver(post_save, sender=Session)
 def schedule_session_tasks(sender, instance, created, **kwargs):
@@ -18,9 +21,12 @@ def schedule_session_tasks(sender, instance, created, **kwargs):
         schedule_task(instance.end_register_time, on_end_register_time, instance.id, 'end_register')
 
 def schedule_task(run_at, task_func, session_id, tag):
-    if run_at.tzinfo is not None:
-        run_at = run_at.replace(tzinfo=None)
-    clocked_time = make_aware(run_at)
+    if run_at.tzinfo is None:
+        run_at = Tehran_TZ.localize(run_at)
+    else:
+        run_at = run_at.astimezone(Tehran_TZ)
+
+    clocked_time = run_at.astimezone(UTC)
     clocked, _ = ClockedSchedule.objects.get_or_create(clocked_time=clocked_time)
 
     PeriodicTask.objects.create(
