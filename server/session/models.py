@@ -17,6 +17,10 @@ class Session(models.Model):
         choices=Status.choices,
         default=Status.UPCOMING,
     )
+    
+    def change_status_to(self, status):
+        self.status = status
+        self.save()
 
     def __str__(self):
         return f"Session from {self.start_time} to {self.end_time} ({self.status})"
