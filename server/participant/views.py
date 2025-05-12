@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from .models import SessionParticipant
+from .serializers import SessionParticipantSerializer
 
-# Create your views here.
+
+class SessionParticipantViewSet(viewsets.ModelViewSet):
+    queryset = SessionParticipant.objects.all()
+    serializer_class = SessionParticipantSerializer

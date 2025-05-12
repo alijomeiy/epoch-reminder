@@ -6,6 +6,7 @@ class Session(models.Model):
         UPCOMING = 'upcoming', 'Upcoming '
         ONGOING = 'ongoing', 'Ongoing '
         COMPLETED = 'completed', 'Completed'
+        WAITING = 'waiting', 'Waiting'
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
@@ -16,6 +17,10 @@ class Session(models.Model):
         choices=Status.choices,
         default=Status.UPCOMING,
     )
+    
+    def change_status_to(self, status):
+        self.status = status
+        self.save()
 
     def __str__(self):
         return f"Session from {self.start_time} to {self.end_time} ({self.status})"
