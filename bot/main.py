@@ -122,7 +122,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             json=messenger_user_payload,
         )
 
-        logger.info(f"create_messenger_user_response: {create_messenger_user_response.status_code}")
+        logger.info(f"Messenger User: {create_messenger_user_response.content}")
 
         if create_messenger_user_response.status_code in [201, 200]:  # Both created and existing users are OK
             await asyncio.sleep(1)  # Wait 1 second for user creation to complete
