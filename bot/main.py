@@ -69,10 +69,10 @@ bot.
 
 import logging
 import requests
-
 import os
 from dotenv import load_dotenv
-
+import settings
+import asyncio
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
@@ -83,7 +83,6 @@ from telegram.ext import (
     filters,
 )
 
-API_BASE_URL = "http://192.168.21.70:8000/api"
 
 
 load_dotenv()
@@ -103,43 +102,65 @@ GENDER, PHOTO, LOCATION, BIO = range(4)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and asks the user about their gender."""
     telegram_user_id = update.effective_user.id  # آی‌دی کاربر تلگرام
     first_name = update.effective_user.first_name
 
-    # # ساختن داده‌ای که به سرور فرستاده می‌شود
-    payload = {
+    messenger_user_payload = {
         "messenger_id": telegram_user_id
     }
 
+    user_payload = {
+        "name": first_name,
+        "created_by": telegram_user_id,  # This will be the MessengerUser's ID
+        "default_hezb": None  # Optional field, can be set later
+    }
+
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/messenger-user/",
-            json=payload,
+        # First create/verify messenger user
+        create_messenger_user_response = requests.post(
+            f"{settings.API_BASE_URL}/messenger-user/",
+            json=messenger_user_payload,
         )
 
-        if response.status_code == 201:
-            await update.message.reply_text(f"سلام {first_name}! ثبت‌نام با موفقیت انجام شد.")
-        elif response.status_code == 200:
-            await update.message.reply_text(f"{first_name}، شما قبلاً ثبت شده‌اید.")
+        logger.info(f"create_messenger_user_response: {create_messenger_user_response.status_code}")
+
+        if create_messenger_user_response.status_code in [201, 200]:  # Both created and existing users are OK
+            await asyncio.sleep(1)  # Wait 1 second for user creation to complete
+            
+            # Then create the actual user
+            create_user_response = requests.post(
+                f"{settings.API_BASE_URL}/user/",
+                json=user_payload,
+            )
+
+            logger.info(f"create_user_response: {create_user_response.status_code}")
+
+            if create_user_response.status_code == 201:
+                await update.message.reply_text(settings.START_HELLO_MESSAGE.format(name=first_name))
+            else:
+                error_message = create_user_response.text if create_user_response.text else "Unknown error"
+                await update.message.reply_text(settings.ERROR_IN_REGISTER_MESSAGE.format(error=error_message))
+                return
         else:
-            await update.message.reply_text(f"خطا در ثبت‌نام: {response.status_code} - {response.text}")
+            error_message = create_messenger_user_response.text if create_messenger_user_response.text else "Unknown error"
+            await update.message.reply_text(settings.ERROR_IN_REGISTER_MESSAGE.format(error=error_message))
+            return
     except Exception as e:
-        logging.error("خطا در ارتباط با API: %s", e)
-        await update.message.reply_text("مشکلی در برقراری ارتباط با سرور پیش آمد.")
-    print(f"DONE - userid: {telegram_user_id} - first name: {first_name}")
-    reply_keyboard = [["Boy", "Girl", "Other"]]
+        logging.error(settings.ERROR_IN_API_CALL_MESSAGE.format(error=e))
+        await update.message.reply_text(settings.ERROR_IN_API_CALL_MESSAGE.format(error=e))
+        return
+
+
+    reply_keyboard = [[settings.CREATE_NEW_USER_BUTTON, settings.SUBSCRIBE_TO_COURSE_BUTTON]]
 
     await update.message.reply_text(
-        "Hi! My name is Professor Bot. I will hold a conversation with you. "
-        "Send /cancel to stop talking to me.\n\n"
-        "Are you a boy or a girl?",
+        settings.WHAT_DO_YOU_WANT_TO_DO_MESSAGE,
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder="Boy or Girl?"
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder=settings.WHAT_DO_YOU_WANT_TO_DO_MESSAGE
         ),
     )
 
-    return GENDER
+    pass
 
 
 async def gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
