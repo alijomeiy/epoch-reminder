@@ -17,6 +17,15 @@ class Session(models.Model):
         choices=Status.choices,
         default=Status.UPCOMING,
     )
+    create_time = models.DateTimeField(auto_now_add=True)
+    
+    def get_previous_session(self):
+        return (
+            Session.objects
+            .filter(start_time__lt=self.start_time)
+            .order_by('-create_time')
+            .first()
+        )
     
     def change_status_to(self, status):
         self.status = status
