@@ -147,10 +147,34 @@ async def show_session_command(
     else:
         await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
 
+async def show_users_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    telegram_user_id = update.effective_user.id
+    url = f"{settings.API_BASE_URL}/messenger-user/{telegram_user_id}/users/"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        users = response.json()
+        keyboard = [
+            [InlineKeyboardButton(f"{user['name']}", callback_data="noop")]
+            for user in users
+        ]
+        if not users:
+            await update.message.reply_text("❗️هیچ کاربری یافت نشد.")
+            return ConversationHandler.END
+        await update.message.reply_text(
+            "list your users:",  reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
+
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
+    if query.data == "noop":
+        return
     selected_session_id = query.data.split("_")[1]
     user_selection[update.effective_user.id] = selected_session_id
     await query.edit_message_text(f"✅ شما جلسه {selected_session_id} را انتخاب کردید.")
@@ -293,10 +317,10 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(user_create_conv)
     application.add_handler(subscribe_session_conv)
+    application.add_handler(CommandHandler("show_users", show_users_command))
     application.add_handler(CommandHandler("show_sessions", show_session_command))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-
 
 if __name__ == "__main__":
     main()
