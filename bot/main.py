@@ -179,7 +179,6 @@ def send_register_participant(user_ids, session_id) -> None:
     for user_id in user_ids:
         payload = {"user": user_id, "session": session_id, "hezb": None}
         r = requests.post(f"{settings.API_BASE_URL}/participant/", json=payload)
-        print(r)
 
 async def req_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = f"{settings.API_BASE_URL}/session/"
@@ -268,7 +267,6 @@ async def handle_user_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
     elif data == "confirm_selection":
         selected_ids = context.user_data.get("selected_users", set())
-        print(selected_ids)
         selected_names = [
             user['name']
             for user in context.user_data["all_users"]
