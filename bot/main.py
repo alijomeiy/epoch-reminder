@@ -29,10 +29,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 ASK_USER_NAME = 1
-user_selection = {}
-
-SELECT_USER, SELECT_SESSION = range(2)
-
+SELECTING_USERS = 2
+SELECT_USER = 3
 
 # /start command - create messenger and base user
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -144,6 +142,7 @@ async def show_session_command(
         await update.message.reply_text(
             "لطفاً یک جلسه انتخاب کنید:", reply_markup=InlineKeyboardMarkup(keyboard)
         )
+        return SELECT_USER
     else:
         await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
 
@@ -175,118 +174,116 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await query.answer()
     if query.data == "noop":
         return
-    selected_session_id = query.data.split("_")[1]
-    user_selection[update.effective_user.id] = selected_session_id
-    await query.edit_message_text(f"✅ شما جلسه {selected_session_id} را انتخاب کردید.")
-    await register_participant(update, selected_session_id)
 
+def send_register_participant(user_ids, session_id) -> None:
+    for user_id in user_ids:
+        payload = {"user": user_id, "session": session_id, "hezb": None}
+        r = requests.post(f"{settings.API_BASE_URL}/participant/", json=payload)
+        print(r)
 
-async def register_participant(update: Update, selected_session_id: str) -> None:
-    user_id = update.effective_user.id
-    payload = {"user": user_id, "session": selected_session_id, "hezb": None}
-    try:
-        response = requests.post(f"{settings.API_BASE_URL}/participant/", json=payload)
-        if response.status_code == 201:
-            await update.message.reply_text(
-                f"✅ با موفقیت در جلسه {selected_session_id} ثبت‌نام شدید."
-            )
-        else:
-            await update.message.reply_text(f"❌ خطا در ثبت‌نام: {response.text}")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ خطا در ارتباط با سرور: {str(e)}")
+async def req_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = f"{settings.API_BASE_URL}/session/"
+    response = requests.get(url)
 
-
-async def subscribe_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_user_id = update.effective_user.id
-    url = f"{settings.API_BASE_URL}/messenger-user/{telegram_user_id}/users/"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            users = response.json()
-            if not users:
-                await update.message.reply_text("❗️هیچ کاربری یافت نشد.")
-                return ConversationHandler.END
-
-            # ذخیره کاربران برای استفاده در مرحله بعد
-            context.user_data["users"] = {str(u["id"]): u["name"] for u in users}
-
-            keyboard = [
-                [InlineKeyboardButton(u["name"], callback_data=f"user_{u['id']}")]
-                for u in users
+    if response.status_code == 200:
+        sessions = response.json()
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    f"ID: {s['id']} - شروع: {s['start_time']} - پایان: {s['end_time']}",
+                    callback_data=f"session_{s['id']}",
+                )
             ]
-            await update.message.reply_text(
-                "👤 لطفاً یکی از کاربران را انتخاب کن:",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-            )
-            return SELECT_USER
-        else:
-            await update.message.reply_text("❗️خطا در دریافت کاربران.")
-            return ConversationHandler.END
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ خطا در ارتباط: {e}")
-        return ConversationHandler.END
+            for s in sessions
+        ]
+        await update.message.reply_text(
+            "لطفاً یک جلسه انتخاب کنید:", reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return SELECT_USER
+    else:
+        await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
 
+async def show_user_selection_menu(query, context):
+    selected = context.user_data.get("selected_users", set())
+    users = context.user_data["all_users"]
+
+    keyboard = []
+    for user in users:
+        user_id = str(user['id'])
+        is_selected = user_id in selected
+        prefix = "✅ " if is_selected else ""
+        keyboard.append([
+            InlineKeyboardButton(f"{prefix}{user['name']}", callback_data=f"user_{user_id}")
+        ])
+
+    # دکمه تأیید در آخر
+    keyboard.append([InlineKeyboardButton("✅ تأیید انتخاب‌ها", callback_data="confirm_selection")])
+
+    await query.message.edit_text(
+        "کاربران مورد نظر را انتخاب کنید:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 async def select_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    user_id = query.data.split("_")[1]
-    context.user_data["selected_user_id"] = user_id
+    session_id = query.data.split("_")[1]
+    context.user_data["session_id"] = session_id
+    context.user_data["selected_users"] = set()
 
-    url = f"{settings.API_BASE_URL}/session/"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            sessions = response.json()
-            if not sessions:
-                await query.edit_message_text("هیچ جلسه‌ای یافت نشد.")
-                return ConversationHandler.END
+    telegram_user_id = update.effective_user.id
+    url = f"{settings.API_BASE_URL}/messenger-user/{telegram_user_id}/users/"
+    response = requests.get(url)
 
-            keyboard = [
-                [
-                    InlineKeyboardButton(
-                        f"ID: {s['id']} - شروع: {s['start_time'].split('T')[0]}",
-                        callback_data=f"session_{s['id']}",
-                    )
-                ]
-                for s in sessions
-            ]
+    if response.status_code == 200:
+        users = response.json()
+        context.user_data["all_users"] = users  # ذخیره لیست کامل برای استفاده در مراحل بعد
 
-            await query.edit_message_text(
-                "📅 لطفاً یک جلسه را انتخاب کن:",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-            )
-            return SELECT_SESSION
-        else:
-            await query.edit_message_text("❗️خطا در دریافت جلسات.")
+        if not users:
+            await query.message.reply_text("❗️هیچ کاربری یافت نشد.")
             return ConversationHandler.END
-    except Exception as e:
-        await query.edit_message_text(f"⚠️ خطا در ارتباط با سرور: {e}")
+
+        await show_user_selection_menu(query, context)
+        return SELECTING_USERS
+    else:
+        await query.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
         return ConversationHandler.END
 
-
-async def select_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_user_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    data = query.data
 
-    session_id = query.data.split("_")[1]
-    user_id = context.user_data.get("selected_user_id")
-
-    payload = {"user": user_id, "session": session_id, "hezb": None}
-    try:
-        response = requests.post(f"{settings.API_BASE_URL}/participant/", json=payload)
-        if response.status_code == 201:
-            await query.edit_message_text(
-                f"✅ کاربر با موفقیت در جلسه {session_id} ثبت‌نام شد."
-            )
+    if data.startswith("user_"):
+        user_id = data.split("_")[1]
+        selected = context.user_data.setdefault("selected_users", set())
+        if user_id in selected:
+            selected.remove(user_id)
         else:
-            await query.edit_message_text(f"❌ خطا در ثبت‌نام: {response.text}")
-    except Exception as e:
-        await query.edit_message_text(f"⚠️ خطا در ارتباط با سرور: {e}")
+            selected.add(user_id)
 
-    return ConversationHandler.END
+        await show_user_selection_menu(query, context)
+        return SELECTING_USERS
 
+    elif data == "confirm_selection":
+        selected_ids = context.user_data.get("selected_users", set())
+        print(selected_ids)
+        selected_names = [
+            user['name']
+            for user in context.user_data["all_users"]
+            if str(user['id']) in selected_ids
+        ]
+        await query.message.edit_text(
+            f"✅ کاربران انتخاب‌شده:\n" + "\n".join(selected_names)
+        )
+        session_id = context.user_data.get("session_id")
+        send_register_participant(selected_ids, session_id)
+        await query.message.edit_text(
+            f"✅ کاربران انتخاب‌شده:\n" + "\n".join(selected_names) +
+            "\n\n✅ اطلاعات با موفقیت ارسال شد."
+        )
+        return ConversationHandler.END
 
 def main() -> None:
     application = Application.builder().token(TOKEN).build()
@@ -301,14 +298,14 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
-    subscribe_session_conv = ConversationHandler(
+    req_session_conv = ConversationHandler(
         entry_points=[
-            CommandHandler("session_subscription", subscribe_session_command)
+            CommandHandler("req_session", req_session_command)
         ],
         states={
-            SELECT_USER: [CallbackQueryHandler(select_user, pattern=r"^user_\d+$")],
-            SELECT_SESSION: [
-                CallbackQueryHandler(select_session, pattern=r"^session_\d+$")
+            SELECT_USER: [CallbackQueryHandler(select_user)],
+            SELECTING_USERS: [
+            CallbackQueryHandler(handle_user_selection, pattern="^(user_|confirm_selection$)")
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
@@ -316,10 +313,11 @@ def main() -> None:
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(user_create_conv)
-    application.add_handler(subscribe_session_conv)
+    application.add_handler(req_session_conv)
     application.add_handler(CommandHandler("show_users", show_users_command))
     application.add_handler(CommandHandler("show_sessions", show_session_command))
     application.add_handler(CallbackQueryHandler(button_callback))
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
