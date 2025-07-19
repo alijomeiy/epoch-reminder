@@ -92,7 +92,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
 
-# مرحله: ساخت کاربر جدید
 async def create_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👤 لطفاً نام کاربر جدید را وارد کن:")
     return ASK_USER_NAME
@@ -121,7 +120,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-# نمایش جلسات و ثبت‌نام
 async def show_session_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -145,6 +143,7 @@ async def show_session_command(
         return SELECT_USER
     else:
         await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
+
 
 async def show_users_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -175,12 +174,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "noop":
         return
 
+
 def send_register_participant(user_ids, session_id) -> None:
     for user_id in user_ids:
         payload = {"user": user_id, "session": session_id, "hezb": None}
         r = requests.post(f"{settings.API_BASE_URL}/participant/", json=payload)
 
-async def req_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def join_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = f"{settings.API_BASE_URL}/session/"
     response = requests.get(url)
 
@@ -202,6 +203,7 @@ async def req_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
 
+
 async def show_user_selection_menu(query, context):
     selected = context.user_data.get("selected_users", set())
     users = context.user_data["all_users"]
@@ -215,13 +217,13 @@ async def show_user_selection_menu(query, context):
             InlineKeyboardButton(f"{prefix}{user['name']}", callback_data=f"user_{user_id}")
         ])
 
-    # دکمه تأیید در آخر
     keyboard.append([InlineKeyboardButton("✅ تأیید انتخاب‌ها", callback_data="confirm_selection")])
 
     await query.message.edit_text(
         "کاربران مورد نظر را انتخاب کنید:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 async def select_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -248,6 +250,7 @@ async def select_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await query.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
         return ConversationHandler.END
+
 
 async def handle_user_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -283,6 +286,7 @@ async def handle_user_selection(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return ConversationHandler.END
 
+
 def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
@@ -296,9 +300,9 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
-    req_session_conv = ConversationHandler(
+    join_session_conv = ConversationHandler(
         entry_points=[
-            CommandHandler("req_session", req_session_command)
+            CommandHandler("join_session", join_session_command)
         ],
         states={
             SELECT_USER: [CallbackQueryHandler(select_user)],
@@ -311,7 +315,7 @@ def main() -> None:
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(user_create_conv)
-    application.add_handler(req_session_conv)
+    application.add_handler(join_session_conv)
     application.add_handler(CommandHandler("show_users", show_users_command))
     application.add_handler(CommandHandler("show_sessions", show_session_command))
     application.add_handler(CallbackQueryHandler(button_callback))
