@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import asyncio
 import uvicorn
-import bot  # فایل bot.py رو ایمپورت میکنیم
+import bot
 
 app = FastAPI()
 
@@ -24,4 +24,4 @@ async def send_message_to_users(data: BroadcastRequest):
     return {"status": "success", "message": "Messages sent"}
 
 def run_api():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=9000)
