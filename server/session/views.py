@@ -4,5 +4,9 @@ from .serializers import SessionSerializer
 
 
 class SessionViewSet(viewsets.ModelViewSet):
-    queryset = Session.objects.all()
     serializer_class = SessionSerializer
+    queryset = Session.objects.none()
+
+    def get_queryset(self):
+        queryset = Session.objects.filter(status=Session.Status.UPCOMING)
+        return queryset
