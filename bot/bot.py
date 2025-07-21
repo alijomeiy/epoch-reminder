@@ -149,6 +149,7 @@ async def show_users_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     telegram_user_id = update.effective_user.id
+    print(telegram_user_id)
     url = f"{settings.API_BASE_URL}/messenger-user/{telegram_user_id}/users/"
     response = requests.get(url)
 
@@ -288,7 +289,7 @@ async def handle_user_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 def run_bot() -> None:
-    application = Application.builder().token(TOKEN).build()
+    application = Application.builder().token(os.getenv("TOKEN")).build()
 
     user_create_conv = ConversationHandler(
         entry_points=[CommandHandler("create_user", create_user_command)],
