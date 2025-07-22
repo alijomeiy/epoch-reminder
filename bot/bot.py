@@ -183,26 +183,9 @@ def send_register_participant(user_ids, session_id) -> None:
 
 
 async def join_session_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = f"{settings.API_BASE_URL}/session/"
-    response = requests.get(url)
-
-    if response.status_code == 200:
-        sessions = response.json()
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    f"ID: {s['id']} - شروع: {s['start_time']} - پایان: {s['end_time']}",
-                    callback_data=f"session_{s['id']}",
-                )
-            ]
-            for s in sessions
-        ]
-        await update.message.reply_text(
-            "لطفاً یک جلسه انتخاب کنید:", reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-        return SELECT_USER
-    else:
-        await update.message.reply_text("مشکلی در دریافت جلسات پیش آمد.")
+    chat_id = update.effective_chat.id
+    await send_session_selection(chat_id, context)
+    return SELECT_USER
 
 
 async def show_user_selection_menu(query, context):
@@ -287,6 +270,37 @@ async def handle_user_selection(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return ConversationHandler.END
 
+async def send_session_selection(chat_id, context):
+    url = f"{settings.API_BASE_URL}/session/"
+    response = requests.get(url)
+    if response.status_code == 200:
+        sessions = response.json()
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    f"ID: {s['id']} - شروع: {s['start_time']} - پایان: {s['end_time']}",
+                    callback_data=f"session_{s['id']}",
+                )
+            ]
+            for s in sessions
+        ]
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="لطفاً یک جلسه انتخاب کنید:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="مشکلی در دریافت جلسات پیش آمد."
+        )
+
+async def start_join_session(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    chat_id = query.message.chat_id
+    await send_session_selection(chat_id, context)
+    return SELECT_USER
 
 def run_bot() -> None:
     application = Application.builder().token(os.getenv("TOKEN")).build()
@@ -303,7 +317,8 @@ def run_bot() -> None:
 
     join_session_conv = ConversationHandler(
         entry_points=[
-            CommandHandler("join_session", join_session_command)
+            CommandHandler("join_session", join_session_command),
+            CallbackQueryHandler(start_join_session, pattern="^start_join_session$")
         ],
         states={
             SELECT_USER: [CallbackQueryHandler(select_user)],
@@ -320,5 +335,6 @@ def run_bot() -> None:
     application.add_handler(CommandHandler("show_users", show_users_command))
     application.add_handler(CommandHandler("show_sessions", show_session_command))
     application.add_handler(CallbackQueryHandler(button_callback))
+    application.add_handler(CallbackQueryHandler(start_join_session, pattern="^start_join_session$"))
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)

@@ -6,12 +6,11 @@ from user.models import MessengerUser
 from .models import Session
 
 
-def notify_users(user_ids, message):
-    print(f"Notification sent to {user_ids}: {message}")
-    url = "http://192.168.21.70:9000/send-message/"
+def notify_users(user_ids):
+    print(f"Notification sent to {user_ids}")
+    url = "http://192.168.21.70:9000/notify-new-session/"
     data = {
         "user_ids": user_ids,
-        "message": message
     }
     response = requests.post(url, json=data)
     print("Status Code:", response.status_code)

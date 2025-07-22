@@ -10,23 +10,22 @@ app = FastAPI()
 
 class BroadcastRequest(BaseModel):
     user_ids: list[int]
-    message: str
 
-@app.post("/send-message/")
+@app.post("/notify-new-session/")
 async def send_message_to_users(data: BroadcastRequest):
     application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
     if not application:
         raise HTTPException(status_code=503, detail="Bot is not running")
 
     keyboard = [
-        [InlineKeyboardButton("پیوستن به جلسه", callback_data="join_session")]
+        [InlineKeyboardButton("مشاهده", callback_data="start_join_session")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     for user_id in data.user_ids:
         try:
             await application.bot.send_message(
                 chat_id=user_id,
-                text=data.message,
+                text="دوره جدید اومده",
                 reply_markup=reply_markup
             )
         except Exception as e:
