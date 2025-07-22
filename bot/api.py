@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import uvicorn
 import os
 from telegram.ext import ApplicationBuilder
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 
 app = FastAPI()
@@ -17,9 +18,17 @@ async def send_message_to_users(data: BroadcastRequest):
     if not application:
         raise HTTPException(status_code=503, detail="Bot is not running")
 
+    keyboard = [
+        [InlineKeyboardButton("پیوستن به جلسه", callback_data="join_session")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     for user_id in data.user_ids:
         try:
-            await application.bot.send_message(chat_id=user_id, text=data.message)
+            await application.bot.send_message(
+                chat_id=user_id,
+                text=data.message,
+                reply_markup=reply_markup
+            )
         except Exception as e:
             print(f"Error sending message to {user_id}: {e}")
 

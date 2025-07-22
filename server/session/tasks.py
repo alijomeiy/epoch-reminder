@@ -1,7 +1,21 @@
 import random 
+import requests
 from celery import shared_task
 from participant.models import SessionParticipant
+from user.models import MessengerUser
 from .models import Session
+
+
+def notify_users(user_ids, message):
+    print(f"Notification sent to {user_ids}: {message}")
+    url = "http://192.168.21.70:9000/send-message/"
+    data = {
+        "user_ids": user_ids,
+        "message": message
+    }
+    response = requests.post(url, json=data)
+    print("Status Code:", response.status_code)
+    print("Response JSON:", response.json())
 
 @shared_task
 def on_start_time(session_id):
@@ -17,6 +31,9 @@ def on_end_time(session_id):
 def on_start_register_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.UPCOMING)
+    users =  list(MessengerUser.objects.values_list('messenger_id', flat=True))
+    notify_users(users, "test message")
+
 
 @shared_task
 def on_end_register_time(session_id):
