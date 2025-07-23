@@ -1,11 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
+import subprocess
 import os
 from telegram.ext import ApplicationBuilder
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from datetime import datetime
+from docxtpl import DocxTemplate
+from docx2pdf import convert
 from typing import Dict
 import json
 
@@ -75,15 +78,33 @@ async def receive_data(payload: Payload):
         hezb_days: {json.dumps(payload.hezb_days, ensure_ascii=False)}
     """
 
-    try:
-        await application.bot.send_message(
-            chat_id=payload.telegram_id,
-            text=text,
-        )
-    except Exception as e:
-        print(f"Error sending message to {user_id}: {e}")
+    doc = DocxTemplate("template.docx")
+    context = {
+        'username': payload.username,
+        'start_time': payload.start_time,
+        'end_time': payload.end_time
+    }
+    doc.render(context)
+    doc.save("filled_report.docx")
+    # convert("filled_report.docx", "filled_report.pdf")
+    subprocess.run([
+        "libreoffice",
+        "--headless",
+        "--convert-to", "pdf",
+        "--outdir", ".",
+        "filled_report.docx"
+    ], check=True)
+    print("PDF report generated successfully!")
 
-    return {"status": "success", "message": "Messages sent"}
+    # try:
+    #     await application.bot.send_message(
+    #         chat_id=payload.telegram_id,
+    #         text=text,
+    #     )
+    # except Exception as e:
+    #     print(f"Error sending message to {user_id}: {e}")
+
+    # return {"status": "success", "message": "Messages sent"}
 
 
 
