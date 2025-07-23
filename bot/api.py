@@ -66,48 +66,59 @@ async def send_message_to_users(data: BroadcastRequest):
 
     return {"status": "success", "message": "Messages sent"}
 
+def generate_pdf_from_template(template_path: str, context: dict, output_name: str, output_dir: str) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+
+    docx_filename = f"{output_name}.docx"
+    pdf_filename = f"{output_name}.pdf"
+
+    # Render the DOCX template
+    doc = DocxTemplate(template_path)
+    doc.render(context)
+    doc.save(docx_filename)
+
+    # Convert to PDF
+    subprocess.run([
+        "libreoffice",
+        "--headless",
+        "--convert-to", "pdf",
+        "--outdir", output_dir,
+        docx_filename
+    ], check=True)
+    print(f"✅ PDF generated: {pdf_filename}")
+
+    # Delete the temporary DOCX
+    os.remove(docx_filename)
+
+    return os.path.join(output_dir, pdf_filename)
+
 @app.post("/send-info/")
 async def receive_data(payload: Payload):
     application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
     if not application:
         raise HTTPException(status_code=503, detail="Bot is not running")
 
-    text = f"""
-        username: {payload.username},
-        start_time: {payload.start_time},
-        end_time: {payload.end_time},
-        hezb_days: {json.dumps(payload.hezb_days, ensure_ascii=False)}
-    """
-
-    doc = DocxTemplate("template.docx")
-    docx_filename = f"{payload.username}.docx"
-    pdf_filename = f"{payload.username}.pdf"
     context = {
         'username': payload.username,
         'start_time': payload.start_time,
         'end_time': payload.end_time,
         'hezb_days': payload.hezb_days
     }
-    doc.render(context)
-    doc.save(docx_filename)
-    subprocess.run([
-        "libreoffice",
-        "--headless",
-        "--convert-to", "pdf",
-        "--outdir", ".",
-        docx_filename
-    ], check=True)
-    print("PDF report generated successfully!")
+
+    # Generate PDF
+    output_dir="pdf"
+    pdf_filename = generate_pdf_from_template("template.docx", context, payload.username, output_dir)
+    print(pdf_filename)
 
     try:
         with open(pdf_filename, "rb") as file:
             await application.bot.send_document(
                 chat_id=payload.telegram_id,
-                document=InputFile(file, filename=pdf_filename),
+                document=InputFile(file, filename=os.path.basename(pdf_filename)),
                 caption="📄 Your report is ready!"
             )
     except Exception as e:
-        print(f"Error sending message to {user_id}: {e}")
+        print(f"Error sending message to {payload.telegram_id}: {e}")
 
     return {"status": "success", "message": "Messages sent"}
 
