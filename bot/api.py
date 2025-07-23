@@ -18,15 +18,34 @@ async def send_message_to_users(data: BroadcastRequest):
         raise HTTPException(status_code=503, detail="Bot is not running")
 
     keyboard = [
-        [InlineKeyboardButton("مشاهده", callback_data="start_join_session")]
+        [InlineKeyboardButton("مشاهده دوره", callback_data="start_join_session")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     for user_id in data.user_ids:
         try:
             await application.bot.send_message(
                 chat_id=user_id,
-                text="دوره جدید اومده",
+                text="دوره جدید حزب قرآن آغاز شد",
                 reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f"Error sending message to {user_id}: {e}")
+
+    return {"status": "success", "message": "Messages sent"}
+
+@app.post("/notify-end-register/")
+async def send_message_to_users(data: BroadcastRequest):
+    application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
+    if not application:
+        raise HTTPException(status_code=503, detail="Bot is not running")
+
+    for user_id in data.user_ids:
+        try:
+            await application.bot.send_message(
+                chat_id=user_id,
+                text="""ثبت‌نام تموم شد!
+ممنون از استقبال بی‌نظیرتون از دوره حزب قرآن 🌸
+اگر ثبت‌نام کردید، منتظر شروع دوره باشید!""",
             )
         except Exception as e:
             print(f"Error sending message to {user_id}: {e}")

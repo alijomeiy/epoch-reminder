@@ -6,9 +6,9 @@ from user.models import MessengerUser
 from .models import Session
 
 
-def notify_users(user_ids):
+def notify_users(user_ids, action):
     print(f"Notification sent to {user_ids}")
-    url = "http://192.168.21.88:9000/notify-new-session/"
+    url = f"http://192.168.21.88:9000/{action}/"
     data = {
         "user_ids": user_ids,
     }
@@ -25,13 +25,15 @@ def on_start_time(session_id):
 def on_end_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.COMPLETED)
+    users =  list(MessengerUser.objects.values_list('messenger_id', flat=True))
+    notify_users(users, "notify-end-register")
 
 @shared_task
 def on_start_register_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.UPCOMING)
     users =  list(MessengerUser.objects.values_list('messenger_id', flat=True))
-    notify_users(users)
+    notify_users(users, "notify-new-session")
 
 
 @shared_task
