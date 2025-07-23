@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import uvicorn
 import subprocess
 import os
+from telegram import InputFile
 from telegram.ext import ApplicationBuilder
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
@@ -42,7 +43,7 @@ async def send_message_to_users(data: BroadcastRequest):
                 reply_markup=reply_markup
             )
         except Exception as e:
-            print(f"Error sending message to {user_id}: {e}")
+            print(f"Error sending message to {payload.telegram_id}: {e}")
 
     return {"status": "success", "message": "Messages sent"}
 
