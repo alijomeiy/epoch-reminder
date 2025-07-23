@@ -86,7 +86,6 @@ async def receive_data(payload: Payload):
     }
     doc.render(context)
     doc.save("filled_report.docx")
-    # convert("filled_report.docx", "filled_report.pdf")
     subprocess.run([
         "libreoffice",
         "--headless",
@@ -96,15 +95,15 @@ async def receive_data(payload: Payload):
     ], check=True)
     print("PDF report generated successfully!")
 
-    # try:
-    #     await application.bot.send_message(
-    #         chat_id=payload.telegram_id,
-    #         text=text,
-    #     )
-    # except Exception as e:
-    #     print(f"Error sending message to {user_id}: {e}")
+    try:
+        await application.bot.send_message(
+            chat_id=payload.telegram_id,
+            text=text,
+        )
+    except Exception as e:
+        print(f"Error sending message to {user_id}: {e}")
 
-    # return {"status": "success", "message": "Messages sent"}
+    return {"status": "success", "message": "Messages sent"}
 
 
 
