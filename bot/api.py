@@ -5,11 +5,21 @@ import os
 from telegram.ext import ApplicationBuilder
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
+from datetime import datetime
+from typing import Dict
+import json
 
 app = FastAPI()
 
 class BroadcastRequest(BaseModel):
     user_ids: list[int]
+
+class Payload(BaseModel):
+    telegram_id: int
+    start_time: str
+    end_time: str
+    username: str
+    hezb_days: Dict[str, int]
 
 @app.post("/notify-new-session/")
 async def send_message_to_users(data: BroadcastRequest):
@@ -51,6 +61,31 @@ async def send_message_to_users(data: BroadcastRequest):
             print(f"Error sending message to {user_id}: {e}")
 
     return {"status": "success", "message": "Messages sent"}
+
+@app.post("/send-info/")
+async def receive_data(payload: Payload):
+    application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
+    if not application:
+        raise HTTPException(status_code=503, detail="Bot is not running")
+
+    text = f"""
+        username: {payload.username},
+        start_time: {payload.start_time},
+        end_time: {payload.end_time},
+        hezb_days: {json.dumps(payload.hezb_days, ensure_ascii=False)}
+    """
+
+    try:
+        await application.bot.send_message(
+            chat_id=payload.telegram_id,
+            text=text,
+        )
+    except Exception as e:
+        print(f"Error sending message to {user_id}: {e}")
+
+    return {"status": "success", "message": "Messages sent"}
+
+
 
 def run_api():
     uvicorn.run(app, host="0.0.0.0", port=9000)

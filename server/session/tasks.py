@@ -1,40 +1,55 @@
 import random 
 import requests
+import jdatetime
+from datetime import datetime
 from celery import shared_task
 from participant.models import SessionParticipant
 from user.models import MessengerUser
 from .models import Session
 
 
-def notify_users(user_ids, action):
-    print(f"Notification sent to {user_ids}")
+def notify_users(data, action):
     url = f"http://192.168.21.88:9000/{action}/"
-    data = {
-        "user_ids": user_ids,
-    }
     response = requests.post(url, json=data)
     print("Status Code:", response.status_code)
     print("Response JSON:", response.json())
+
+def generate_jalali_date_map(gregorian_date: datetime, begin_hezb: int, days: int = 120):
+    start_date_jalali = jdatetime.date.fromgregorian(date=gregorian_date)
+    hezb_days = {}
+    for i in range(days):
+        current_date = start_date_jalali + jdatetime.timedelta(days=i)
+        date_str = current_date.strftime('%Y/%m/%d')
+        hezb_days[date_str] = ((begin_hezb - 1 + i) % 120) + 1
+    return hezb_days
 
 @shared_task
 def on_start_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.ONGOING)
+    hezb_days = generate_jalali_date_map(session.start_time, 6)
+    session_participants = SessionParticipant.objects.filter(session=session)
+    for session_participant in session_participants:
+        data = {
+            "telegram_id": session_participant.user.created_by.messenger_id,
+            "start_time": jdatetime.datetime.fromgregorian(datetime=session.start_time).strftime('%Y/%m/%d'),
+            "end_time": jdatetime.datetime.fromgregorian(datetime=session.end_time).strftime('%Y/%m/%d'),
+            "username": session_participant.user.name,
+            "hezb_days": generate_jalali_date_map(session.start_time, session_participant.hezb)
+        }
+        notify_users(data, "send-info")
 
 @shared_task
 def on_end_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.COMPLETED)
-    users =  list(MessengerUser.objects.values_list('messenger_id', flat=True))
-    notify_users(users, "notify-end-register")
 
 @shared_task
 def on_start_register_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.UPCOMING)
-    users =  list(MessengerUser.objects.values_list('messenger_id', flat=True))
-    notify_users(users, "notify-new-session")
-
+    users = list(MessengerUser.objects.values_list('messenger_id', flat=True))
+    notify_users({"user_ids": users}, "notify-new-session")
 
 @shared_task
 def on_end_register_time(session_id):
@@ -42,6 +57,8 @@ def on_end_register_time(session_id):
     current_session.change_status_to(Session.Status.WAITING)
     current_participants = SessionParticipant.objects.filter(session=current_session)
     previous_session = current_session.get_previous_session()
+    users = list(MessengerUser.objects.values_list('messenger_id', flat=True))
+    notify_users({"user_ids": users}, "notify-end-register")
     
     available_hezb = set(range(1, 121))
     
