@@ -13,7 +13,7 @@ SUBSCRIBE_TO_COURSE_BUTTON = "ثبت‌نام دوره"
 
 # API
 
-API_BASE_URL = "http://192.168.21.70:8000/api"
+API_BASE_URL = "http://192.168.21.88:8000/api"
 
 
     

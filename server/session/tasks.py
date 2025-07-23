@@ -8,7 +8,7 @@ from .models import Session
 
 def notify_users(user_ids):
     print(f"Notification sent to {user_ids}")
-    url = "http://192.168.21.70:9000/notify-new-session/"
+    url = "http://192.168.21.88:9000/notify-new-session/"
     data = {
         "user_ids": user_ids,
     }
@@ -31,7 +31,7 @@ def on_start_register_time(session_id):
     session = Session.objects.get(id=session_id)
     session.change_status_to(Session.Status.UPCOMING)
     users =  list(MessengerUser.objects.values_list('messenger_id', flat=True))
-    notify_users(users, "test message")
+    notify_users(users)
 
 
 @shared_task
