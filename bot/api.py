@@ -79,27 +79,32 @@ async def receive_data(payload: Payload):
     """
 
     doc = DocxTemplate("template.docx")
+    docx_filename = f"{payload.username}.docx"
+    pdf_filename = f"{payload.username}.pdf"
     context = {
         'username': payload.username,
         'start_time': payload.start_time,
-        'end_time': payload.end_time
+        'end_time': payload.end_time,
+        'hezb_days': payload.hezb_days
     }
     doc.render(context)
-    doc.save("filled_report.docx")
+    doc.save(docx_filename)
     subprocess.run([
         "libreoffice",
         "--headless",
         "--convert-to", "pdf",
         "--outdir", ".",
-        "filled_report.docx"
+        docx_filename
     ], check=True)
     print("PDF report generated successfully!")
 
     try:
-        await application.bot.send_message(
-            chat_id=payload.telegram_id,
-            text=text,
-        )
+        with open(pdf_filename, "rb") as file:
+            await application.bot.send_document(
+                chat_id=payload.telegram_id,
+                document=InputFile(file, filename=pdf_filename),
+                caption="📄 Your report is ready!"
+            )
     except Exception as e:
         print(f"Error sending message to {user_id}: {e}")
 
